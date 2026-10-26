@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>世界の川 長さ ランキング クイズ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-blue-950 min-h-screen text-white">
+  <div class="max-w-xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-1 text-blue-200">世界の川 長さ ランキング クイズ</h1>
+    <p class="text-blue-400 mb-6 text-sm">2本の川を比べてどちらが長いか当てよう（Higher or Lower）</p>
+
+    <!-- Stats -->
+    <div class="flex gap-3 mb-6">
+      <div class="bg-blue-900 rounded-xl px-4 py-3 text-center flex-1">
+        <p class="text-xs text-blue-400">スコア</p>
+        <p id="scoreDisp" class="text-2xl font-bold text-blue-200">0</p>
+      </div>
+      <div class="bg-blue-900 rounded-xl px-4 py-3 text-center flex-1">
+        <p class="text-xs text-blue-400">連続正解</p>
+        <p id="streakDisp" class="text-2xl font-bold text-yellow-400">0</p>
+      </div>
+      <div class="bg-blue-900 rounded-xl px-4 py-3 text-center flex-1">
+        <p class="text-xs text-blue-400">最高ストリーク</p>
+        <p id="bestStreakDisp" class="text-2xl font-bold text-emerald-400">0</p>
+      </div>
+    </div>
+
+    <!-- Game area -->
+    <div id="gameArea">
+      <div class="bg-blue-900 rounded-2xl p-6 mb-4">
+        <p class="text-xs text-blue-400 mb-4 text-center">どちらの川が長いか選んでください</p>
+
+        <!-- River A (fixed) -->
+        <div class="bg-blue-800 rounded-xl p-4 mb-3">
+          <p class="text-xs text-blue-400 mb-1">川 A</p>
+          <p id="riverAName" class="text-xl font-bold text-white mb-1"></p>
+          <p id="riverALength" class="text-sm text-blue-300 font-mono"></p>
+          <p id="riverAInfo" class="text-xs text-blue-400 mt-1"></p>
+        </div>
+
+        <div class="text-center my-2 text-blue-500 font-bold text-lg">vs</div>
+
+        <!-- River B (challenger) -->
+        <div class="bg-blue-800 rounded-xl p-4 mb-4">
+          <p class="text-xs text-blue-400 mb-1">川 B</p>
+          <p id="riverBName" class="text-xl font-bold text-white mb-1"></p>
+          <p id="riverBLength" class="text-sm text-blue-300 font-mono">???</p>
+          <p id="riverBInfo" class="text-xs text-blue-400 mt-1"></p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <button onclick="guess('A')" id="btnA" aria-label="川Aの方が長い"
+            class="py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold text-sm transition">川 A が長い ↑</button>
+          <button onclick="guess('B')" id="btnB" aria-label="川Bの方が長い"
+            class="py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold text-sm transition">川 B が長い ↑</button>
+        </div>
+      </div>
+
+      <!-- Feedback + fact card -->
+      <div id="factCard" class="hidden bg-blue-800 rounded-2xl p-5 mb-4">
+        <p id="factResult" class="font-bold text-lg mb-2"></p>
+        <div id="factDetail" class="text-sm text-blue-300 space-y-1"></div>
+        <button onclick="nextRound()" aria-label="次の問題へ" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition">次へ →</button>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameOver" class="hidden bg-blue-900 rounded-2xl p-8 text-center">
+      <p class="text-4xl mb-3">💧</p>
+      <h2 class="text-2xl font-bold mb-2">ゲームオーバー！</h2>
+      <p id="goText" class="text-blue-300 mb-6"></p>
+      <button onclick="restartGame()" aria-label="もう一度プレイ" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl transition">もう一度</button>
+    </div>
+  </div>
+
+  <script>
+    const rivers = [
+      { name:'ナイル川', country:'アフリカ', length:6650, source:'ブルンジ高地', basin:'エジプト・スーダン・エチオピア等' },
+      { name:'アマゾン川', country:'南米', length:6400, source:'ペルーアンデス山脈', basin:'ブラジル・ペルー・コロンビア等' },
+      { name:'長江（揚子江）', country:'中国', length:6300, source:'唐古拉山脈', basin:'中国（四川・湖北・上海等）' },
+      { name:'ミシシッピ川', country:'北米', length:6275, source:'ミネソタ州イタスカ湖', basin:'米国中部（31州）' },
+      { name:'エニセイ川', country:'ロシア', length:5539, source:'モンゴル・トゥバ', basin:'シベリア西部' },
+      { name:'黄河', country:'中国', length:5464, source:'青海省バヤンカラ山脈', basin:'中国北部' },
+      { name:'オビ川', country:'ロシア', length:5410, source:'アルタイ山脈', basin:'西シベリア' },
+      { name:'コンゴ川', country:'アフリカ', length:4700, source:'ザンビア高地', basin:'コンゴ民主共和国' },
+      { name:'アムール川', country:'ロシア/中国', length:4444, source:'シルカ川とアルグン川', basin:'ロシア極東・中国東北部' },
+      { name:'レナ川', country:'ロシア', length:4400, source:'バイカル湖西岸', basin:'シベリア東部' },
+      { name:'マッケンジー川', country:'カナダ', length:4241, source:'アサバスカ湖', basin:'カナダ北西部' },
+      { name:'ニジェール川', country:'アフリカ', length:4184, source:'ギニア高原', basin:'西アフリカ' },
+      { name:'メコン川', country:'東南アジア', length:4909, source:'チベット高原', basin:'中国・ミャンマー・ラオス・タイ・カンボジア・ベトナム' },
+      { name:'ミズーリ川', country:'北米', length:3767, source:'ロッキー山脈', basin:'米国中部' },
+      { name:'ボルガ川', country:'ロシア', length:3692, source:'ヴァルダイ丘陵', basin:'ロシア欧州部' },
+      { name:'マデイラ川', country:'南米', length:3380, source:'ボリビア・ブラジル', basin:'アマゾン流域' },
+      { name:'パラナ川', country:'南米', length:4880, source:'ブラジル高地', basin:'ブラジル・アルゼンチン・パラグアイ' },
+      { name:'インダス川', country:'アジア', length:3180, source:'チベット高原', basin:'パキスタン・インド・中国' },
+      { name:'ガンジス川', country:'アジア', length:2525, source:'ヒマラヤ山脈', basin:'インド北部・バングラデシュ' },
+      { name:'ドナウ川', country:'ヨーロッパ', length:2860, source:'ドイツ・バーデン＝ヴュルテンベルク州', basin:'中央ヨーロッパ10か国' },
+      { name:'ユーフラテス川', country:'中東', length:2800, source:'アナトリア高原', basin:'トルコ・シリア・イラク' },
+      { name:'ライン川', country:'ヨーロッパ', length:1230, source:'スイスアルプス', basin:'スイス・ドイツ・オランダ' },
+      { name:'ナイジャー川', country:'アフリカ', length:2100, source:'ギニア', basin:'西アフリカ' },
+      { name:'ザンベジ川', country:'アフリカ', length:2574, source:'ザンビア北西部', basin:'南部アフリカ6か国' },
+      { name:'コロラド川', country:'北米', length:2334, source:'ロッキー山脈', basin:'米国南西部・メキシコ' },
+      { name:'コロンビア川', country:'北米', length:2000, source:'ブリティッシュコロンビア州', basin:'米国・カナダ北西部' },
+      { name:'チグリス川', country:'中東', length:1950, source:'アナトリア高原', basin:'トルコ・イラク' },
+      { name:'テムズ川', country:'英国', length:346, source:'イングランドコッツウォルズ', basin:'ロンドンを含む南東イングランド' },
+      { name:'ナイル川青ナイル', country:'アフリカ', length:1600, source:'エチオピア・タナ湖', basin:'エチオピア・スーダン' },
+      { name:'アラル海注入川（アムダリア）', country:'中央アジア', length:2540, source:'パミール高原', basin:'アフガニスタン・ウズベキスタン等' },
+      { name:'チャールズ川', country:'米国', length:130, source:'マサチューセッツ州ホプキントン', basin:'ボストン周辺' },
+      { name:'神通川', country:'日本', length:120, source:'岐阜県・北アルプス飛騨山脈', basin:'富山平野' },
+      { name:'信濃川', country:'日本', length:367, source:'長野県甲武信ヶ岳', basin:'長野・新潟' },
+      { name:'利根川', country:'日本', length:322, source:'群馬県大水上山', basin:'関東平野' },
+      { name:'チャーチル川', country:'カナダ', length:1609, source:'アルバータ州', basin:'マニトバ・サスカチュワン' },
+      { name:'オレンジ川', country:'アフリカ', length:2092, source:'レソト・ドラケンスバーグ山脈', basin:'南アフリカ' },
+      { name:'タイガー川（メコン支流）', country:'東南アジア', length:800, source:'ラオス', basin:'カンボジア' },
+      { name:'イルティシュ川', country:'ロシア', length:4248, source:'アルタイ山脈', basin:'カザフスタン・ロシア' },
+      { name:'コンゴ支流カサイ川', country:'アフリカ', length:1900, source:'アンゴラ', basin:'コンゴ中部' },
+      { name:'ナポ川', country:'南米', length:1100, source:'エクアドル火山', basin:'エクアドル・ペルー' },
+      { name:'オビ川支流イルトゥイシュ', country:'ロシア', length:3650, source:'モンゴル', basin:'中央アジア・シベリア' },
+      { name:'ガンビア川', country:'アフリカ', length:1130, source:'フータ・ジャロン高地', basin:'ギニア・セネガル・ガンビア' },
+      { name:'スネーク川', country:'米国', length:1735, source:'ワイオミング州', basin:'アイダホ・オレゴン・ワシントン' },
+      { name:'ベルコヤンスク川', country:'ロシア', length:1020, source:'シベリア', basin:'ロシア東部' },
+      { name:'エブロ川', country:'スペイン', length:928, source:'ピレネー山脈', basin:'スペイン北東部' },
+      { name:'セーヌ川', country:'フランス', length:775, source:'ブルゴーニュ地方', basin:'フランス北部（パリ）' },
+      { name:'ライン川支流ネッカー川', country:'ドイツ', length:367, source:'シュヴァルツヴァルト', basin:'バーデン＝ヴュルテンベルク州' },
+      { name:'ポー川', country:'イタリア', length:652, source:'コティアン・アルプス', basin:'パダノ平原' },
+      { name:'ローヌ川', country:'フランス', length:812, source:'スイスアルプス', basin:'スイス・フランス南部' },
+      { name:'タグス川（テージョ川）', country:'スペイン/ポルトガル', length:1007, source:'イベリア山地', basin:'スペイン・ポルトガル（リスボン）' },
+    ];
+
+    let currentA = null, currentBIdx = 0, score = 0, streak = 0, bestStreak = 0;
+    let usedIndices = [], gameActive = true;
+
+    function shuffle(arr) {
+      const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a;
+    }
+
+    function getBest() { return parseInt(localStorage.getItem('river_best_streak') || '0'); }
+    function saveBest(n) { localStorage.setItem('river_best_streak', n); }
+
+    function restartGame() {
+      score = 0; streak = 0; bestStreak = getBest();
+      usedIndices = [];
+      gameActive = true;
+      document.getElementById('gameOver').classList.add('hidden');
+      document.getElementById('gameArea').classList.remove('hidden');
+      updateStats();
+
+      const shuffled = shuffle([...Array(rivers.length).keys()]);
+      currentA = rivers[shuffled[0]];
+      currentBIdx = 1;
+      usedIndices = shuffled;
+      showRound();
+    }
+
+    function showRound() {
+      document.getElementById('factCard').classList.add('hidden');
+      ['btnA','btnB'].forEach(id => { document.getElementById(id).disabled = false; });
+
+      const riverB = rivers[usedIndices[currentBIdx % usedIndices.length]];
+
+      document.getElementById('riverAName').textContent = currentA.name;
+      document.getElementById('riverALength').textContent = `${currentA.length.toLocaleString()} km`;
+      document.getElementById('riverAInfo').textContent = `${currentA.country} | 発源: ${currentA.source}`;
+
+      document.getElementById('riverBName').textContent = riverB.name;
+      document.getElementById('riverBLength').textContent = '??? km';
+      document.getElementById('riverBInfo').textContent = `${riverB.country}`;
+    }
+
+    function guess(choice) {
+      const riverB = rivers[usedIndices[currentBIdx % usedIndices.length]];
+      const aWins = currentA.length >= riverB.length;
+      const correct = (choice === 'A' && aWins) || (choice === 'B' && !aWins);
+
+      ['btnA','btnB'].forEach(id => { document.getElementById(id).disabled = true; });
+
+      document.getElementById('riverBLength').textContent = `${riverB.length.toLocaleString()} km`;
+      document.getElementById('riverBInfo').textContent = `${riverB.country} | 発源: ${riverB.source}`;
+
+      const fc = document.getElementById('factCard');
+      fc.classList.remove('hidden');
+
+      if (correct) {
+        score++; streak++;
+        if (streak > bestStreak) { bestStreak = streak; saveBest(bestStreak); }
+        document.getElementById('factResult').textContent = '✅ 正解！';
+        document.getElementById('factResult').className = 'font-bold text-lg mb-2 text-emerald-400';
+      } else {
+        document.getElementById('factResult').textContent = `❌ 不正解。${currentA.length >= riverB.length ? currentA.name : riverB.name} の方が長い（${Math.max(currentA.length, riverB.length).toLocaleString()} km）`;
+        document.getElementById('factResult').className = 'font-bold text-lg mb-2 text-red-400';
+        streak = 0;
+      }
+
+      document.getElementById('factDetail').innerHTML = `
+        <p>${currentA.name}: ${currentA.length.toLocaleString()} km（流域: ${currentA.basin}）</p>
+        <p>${riverB.name}: ${riverB.length.toLocaleString()} km（流域: ${riverB.basin}）</p>
+      `;
+
+      updateStats();
+      // Next: riverB becomes new A
+      currentA = riverB;
+    }
+
+    function nextRound() {
+      currentBIdx++;
+      if (currentBIdx >= usedIndices.length - 1) {
+        usedIndices = shuffle([...Array(rivers.length).keys()]);
+        currentBIdx = 1;
+        currentA = rivers[usedIndices[0]];
+      }
+      showRound();
+    }
+
+    function updateStats() {
+      document.getElementById('scoreDisp').textContent = score;
+      document.getElementById('streakDisp').textContent = streak;
+      document.getElementById('bestStreakDisp').textContent = Math.max(bestStreak, streak);
+    }
+
+    restartGame();
+  </script>
+</body>
+</html>
